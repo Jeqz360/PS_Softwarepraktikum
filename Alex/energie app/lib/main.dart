@@ -30,18 +30,16 @@ class RuleManagementPage extends StatefulWidget {
 }
 
 class _RuleManagementPageState extends State<RuleManagementPage> {
-  @override
-  void initState() {
-    super.initState();
-    _updateConditionsAndActions();
-  }
-
   String? ruleName;
-  List<Map<String, dynamic>> selectedConditions = [];
-  List<Map<String, dynamic>> selectedActions = [];
-  String? conditionConjunction = "UND";
+  List<Map<String, dynamic>> selectedConditions = [
+    {'type': null, 'operator': null, 'value': ''}
+  ];
+  List<Map<String, dynamic>> selectedActions = [
+    {'device': null, 'action': null, 'value': ''}
+  ];
+  String? conditionConjunction = "If any conditions are met";
 
-  List<String> sensors = [
+  List<String> conditionOptions = [
     'Außentemperatur',
     'Raumtemperatur',
     'Luftfeuchtigkeit innen',
@@ -53,22 +51,24 @@ class _RuleManagementPageState extends State<RuleManagementPage> {
     'Stand der PV-Anlage',
     'Windgeschwindigkeit'
   ];
-  List<String> actions = [
-    'Heizung einschalten',
-    'Heizung ausschalten',
-    'Lüftung einschalten',
-    'Lüftung ausschalten',
-    'Bodenheizung aktivieren',
-    'Bodenheizung deaktivieren',
-    'Rollos herunterfahren',
-    'Rollos hochfahren',
-    'Lichter einschalten',
-    'Lichter ausschalten',
-    'Wasserpumpe aktivieren',
-    'Alarm auslösen'
+  List<String> devices = [
+    'Heizung',
+    'Rollos',
+    'Lüftung',
+    'Lichter',
+    'Wasserpumpe',
+    'Alarm'
   ];
-  List<String> comparisonOperators = ['>', '<', '=='];
-  List<String> conjunctionOptions = ['UND', 'ODER'];
+  Map<String, List<String>> deviceActions = {
+    'Heizung': ['Einschalten', 'Ausschalten', 'Temperatur einstellen'],
+    'Rollos': ['Hochfahren', 'Herunterfahren'],
+    'Lüftung': ['Einschalten', 'Ausschalten'],
+    'Lichter': ['Einschalten', 'Ausschalten'],
+    'Wasserpumpe': ['Aktivieren', 'Deaktivieren'],
+    'Alarm': ['Auslösen']
+  };
+  List<String> comparisonOperators = ['<', '>', '=='];
+  List<String> conjunctionOptions = ["If any conditions are met", "If all conditions are met"];
 
   @override
   Widget build(BuildContext context) {
@@ -83,9 +83,9 @@ class _RuleManagementPageState extends State<RuleManagementPage> {
           children: [
             TextField(
               decoration: InputDecoration(
-                labelText: 'Ihre Regel benennen',
+                labelText: 'Rule name',
                 border: OutlineInputBorder(),
-                errorText: ruleName == null || ruleName!.isEmpty ? 'Einen Namen eingeben.' : null,
+                errorText: ruleName == null || ruleName!.isEmpty ? 'Please enter a rule name.' : null,
               ),
               onChanged: (value) {
                 setState(() {
@@ -94,37 +94,47 @@ class _RuleManagementPageState extends State<RuleManagementPage> {
               },
             ),
             SizedBox(height: 16.0),
-            Text('Bedingungen hinzufügen:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('When a new condition is met:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: conditionConjunction,
+                    items: conjunctionOptions.map((option) {
+                      return DropdownMenuItem(
+                        value: option,
+                        child: Text(option),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        conditionConjunction = value;
+                      });
+                    },
+                  ),
+                ),
+              ],
+            ),
             SizedBox(height: 8.0),
             ..._buildConditions(),
-            TextButton(
-              onPressed: () {
-                _addConditionDialog();
-              },
-              child: Text('Eine weitere Bedingung hinzufügen'),
-            ),
             SizedBox(height: 16.0),
-            Text('Aktionen hinzufügen:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            Text('Do the following:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             SizedBox(height: 8.0),
             ..._buildActions(),
-            TextButton(
-              onPressed: () {
-                _addActionDialog();
-              },
-              child: Text('Weitere Aktion hinzufügen'),
-            ),
+
             SizedBox(height: 16.0),
             ElevatedButton(
               onPressed: () {
                 if (ruleName != null && ruleName!.isNotEmpty && selectedConditions.isNotEmpty && selectedActions.isNotEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Regel erstellt: $ruleName - Bedingungen: ${_conditionsToString()}, Aktionen: ${_actionsToString()}'),
+                      content: Text('Rule created: $ruleName - Conditions: ${_conditionsToString()}, Actions: ${_actionsToString()}'),
                     ),
                   );
                 }
               },
-              child: Text('Regel speichern'),
+              child: Text('Save Rule'),
             ),
           ],
         ),
@@ -139,13 +149,77 @@ class _RuleManagementPageState extends State<RuleManagementPage> {
         Row(
           children: [
             Expanded(
-              child: Text(
-                '${selectedConditions[i]['sensor']} ${selectedConditions[i]['operator']} ${selectedConditions[i]['value']}',
-                style: TextStyle(fontSize: 16.0),
+              flex: 2,
+              child: DropdownButtonFormField<String>(
+                decoration: InputDecoration(
+                  labelText: 'Sensor',
+                  border: OutlineInputBorder(),
+                ),
+                value: selectedConditions[i]['type'],
+                items: conditionOptions.map((option) {
+                  return DropdownMenuItem(
+                    value: option,
+                    child: Text(option),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    selectedConditions[i]['type'] = value;
+                  });
+                },
+              ),
+            ),
+            SizedBox(width: 8.0),
+            Expanded(
+              flex: 1,
+              child: DropdownButtonFormField<String>(
+                decoration: InputDecoration(
+                  labelText: 'Operator',
+                  border: OutlineInputBorder(),
+                ),
+                value: selectedConditions[i]['operator'],
+                items: comparisonOperators.map((operator) {
+                  return DropdownMenuItem(
+                    value: operator,
+                    child: Text(operator),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    selectedConditions[i]['operator'] = value;
+                  });
+                },
+              ),
+            ),
+            SizedBox(width: 8.0),
+            Expanded(
+              flex: 2,
+              child: TextField(
+                decoration: InputDecoration(
+                  labelText: 'Value',
+                  border: OutlineInputBorder(),
+                ),
+                controller: TextEditingController.fromValue(
+                  TextEditingValue(
+                    text: selectedConditions[i]['value'],
+                    selection: TextSelection.collapsed(offset: selectedConditions[i]['value'].length),
+                  ),
+                ),
+                onChanged: (value) {
+                  selectedConditions[i]['value'] = value;
+                },
               ),
             ),
             IconButton(
-              icon: Icon(Icons.close),
+              icon: Icon(Icons.add_circle),
+              onPressed: () {
+                setState(() {
+                  selectedConditions.add({'type': null, 'operator': null, 'value': ''});
+                });
+              },
+            ),
+            IconButton(
+              icon: Icon(Icons.remove_circle),
               onPressed: () {
                 setState(() {
                   selectedConditions.removeAt(i);
@@ -155,28 +229,7 @@ class _RuleManagementPageState extends State<RuleManagementPage> {
           ],
         ),
       );
-      if (i < selectedConditions.length - 1) {
-        conditionWidgets.add(
-          DropdownButtonFormField<String>(
-            decoration: InputDecoration(
-              labelText: 'Verknüpfung der Bedingungen auswählen',
-              border: OutlineInputBorder(),
-            ),
-            value: conditionConjunction,
-            items: conjunctionOptions.map((option) {
-              return DropdownMenuItem(
-                value: option,
-                child: Text(option),
-              );
-            }).toList(),
-            onChanged: (value) {
-              setState(() {
-                conditionConjunction = value;
-              });
-            },
-          ),
-        );
-      }
+      conditionWidgets.add(SizedBox(height: 8.0));
     }
     return conditionWidgets;
   }
@@ -188,13 +241,83 @@ class _RuleManagementPageState extends State<RuleManagementPage> {
         Row(
           children: [
             Expanded(
-              child: Text(
-                '${selectedActions[i]['action']}',
-                style: TextStyle(fontSize: 16.0),
+              flex: 2,
+              child: DropdownButtonFormField<String>(
+                decoration: InputDecoration(
+                  labelText: 'Device',
+                  border: OutlineInputBorder(),
+                ),
+                value: selectedActions[i]['device'],
+                items: devices.map((device) {
+                  return DropdownMenuItem(
+                    value: device,
+                    child: Text(device),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    selectedActions[i]['device'] = value;
+                    selectedActions[i]['action'] = null;
+                    selectedActions[i]['value'] = '';
+                  });
+                },
               ),
             ),
+            SizedBox(width: 8.0),
+            Expanded(
+              flex: 2,
+              child: DropdownButtonFormField<String>(
+                decoration: InputDecoration(
+                  labelText: 'Action',
+                  border: OutlineInputBorder(),
+                ),
+                value: selectedActions[i]['action'],
+                items: (selectedActions[i]['device'] != null ? deviceActions[selectedActions[i]['device']] ?? [] : []).map<DropdownMenuItem<String>>((action) {
+                  return DropdownMenuItem(
+                    value: action,
+                    child: Text(action),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    selectedActions[i]['action'] = value;
+                    if (value != 'Temperatur einstellen') {
+                      selectedActions[i]['value'] = '';
+                    }
+                  });
+                },
+              ),
+            ),
+            SizedBox(width: 8.0),
+            if (selectedActions[i]['action'] == 'Temperatur einstellen')
+              Expanded(
+                flex: 2,
+                child: TextField(
+                  decoration: InputDecoration(
+                    labelText: 'Value',
+                    border: OutlineInputBorder(),
+                  ),
+                  controller: TextEditingController.fromValue(
+                    TextEditingValue(
+                      text: selectedActions[i]['value'],
+                      selection: TextSelection.collapsed(offset: selectedActions[i]['value'].length),
+                    ),
+                  ),
+                  onChanged: (value) {
+                    selectedActions[i]['value'] = value;
+                  },
+                ),
+              ),
             IconButton(
-              icon: Icon(Icons.close),
+              icon: Icon(Icons.add_circle),
+              onPressed: () {
+                setState(() {
+                  selectedActions.add({'device': null, 'action': null, 'value': ''});
+                });
+              },
+            ),
+            IconButton(
+              icon: Icon(Icons.remove_circle),
               onPressed: () {
                 setState(() {
                   selectedActions.removeAt(i);
@@ -204,157 +327,28 @@ class _RuleManagementPageState extends State<RuleManagementPage> {
           ],
         ),
       );
+      actionWidgets.add(SizedBox(height: 8.0));
     }
     return actionWidgets;
   }
 
-  void _updateConditionsAndActions() {
-    setState(() {});
-  }
-
   void _addConditionDialog() {
-    String? selectedSensor;
-    String? selectedOperator;
-    String? conditionValue;
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Bedingung hinzufügen'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              DropdownButtonFormField<String>(
-                decoration: InputDecoration(
-                  labelText: 'Sensor auswählen',
-                  border: OutlineInputBorder(),
-                ),
-                items: sensors.map((sensor) {
-                  return DropdownMenuItem(
-                    value: sensor,
-                    child: Text(sensor),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    selectedSensor = value;
-                  });
-                },
-              ),
-              SizedBox(height: 16.0),
-              DropdownButtonFormField<String>(
-                decoration: InputDecoration(
-                  labelText: 'Operator auswählen',
-                  border: OutlineInputBorder(),
-                ),
-                items: comparisonOperators.map((operator) {
-                  return DropdownMenuItem(
-                    value: operator,
-                    child: Text(operator),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    selectedOperator = value;
-                  });
-                },
-              ),
-              SizedBox(height: 16.0),
-              TextField(
-                decoration: InputDecoration(
-                  labelText: 'Wert eingeben (z.B. 25°C)',
-                  border: OutlineInputBorder(),
-                ),
-                onChanged: (value) {
-                  conditionValue = value;
-                },
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              child: Text('Abbrechen'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-            TextButton(
-              child: Text('Hinzufügen'),
-              onPressed: () {
-                if (selectedSensor != null && selectedOperator != null && conditionValue != null && conditionValue!.isNotEmpty) {
-                  setState(() {
-                    selectedConditions.add({'sensor': selectedSensor!, 'operator': selectedOperator!, 'value': conditionValue!});
-                  });
-                }
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
-        );
-      },
-    );
+    setState(() {
+      selectedConditions.add({'type': conditionOptions[0], 'operator': comparisonOperators[0], 'value': ''});
+    });
   }
 
   void _addActionDialog() {
-    String? selectedAction;
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Aktion hinzufügen'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              DropdownButtonFormField<String>(
-                decoration: InputDecoration(
-                  labelText: 'Aktion auswählen',
-                  border: OutlineInputBorder(),
-                ),
-                items: actions.map((action) {
-                  return DropdownMenuItem(
-                    value: action,
-                    child: Text(action),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    selectedAction = value;
-                  });
-                },
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              child: Text('Abbrechen'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-            TextButton(
-              child: Text('Hinzufügen'),
-              onPressed: () {
-                if (selectedAction != null) {
-                  setState(() {
-                    selectedActions.add({'action': selectedAction!});
-                  });
-                }
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
-        );
-      },
-    );
+    setState(() {
+      selectedActions.add({'device': devices[0], 'action': deviceActions[devices[0]]![0], 'value': ''});
+    });
   }
 
   String _conditionsToString() {
-    return selectedConditions.map((condition) => '${condition['sensor']} ${condition['operator']} ${condition['value']}').join(' $conditionConjunction ');
+    return selectedConditions.map((condition) => '${condition['type']} ${condition['operator']} ${condition['value']}').join(' $conditionConjunction ');
   }
 
   String _actionsToString() {
-    return selectedActions.map((action) => action['action']).join(', ');
+    return selectedActions.map((action) => '${action['device']} ${action['action']} ${action['value']}').join(', ');
   }
 }
