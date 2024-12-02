@@ -127,6 +127,7 @@ class _RuleManagementPageState extends State<RuleManagementPage> {
             ElevatedButton(
               onPressed: () {
                 if (ruleName != null && ruleName!.isNotEmpty && selectedConditions.isNotEmpty && selectedActions.isNotEmpty) {
+                  //column: devices mit action --> drüberiterieren, entity id ist geräte, an/aus/numeric; methodenaufruf client.addRule(id eine für state und eine für numeric)  neue map machen: key heißt "condition" (das ist aggrgate condition), nächster key ist "device", da kommt id von gerät rein das gewählt wurde, key "action" da komt numerischer wert oder an/aua (state) map zu machen; regel name auch noch in die map; // für proto --> im honua_flutter im resources protodatei in unsere resources geben, befehl dafür ist im makefile
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('Rule created: $ruleName - Conditions: ${_conditionsToString()}, Actions: ${_actionsToString()}'),
