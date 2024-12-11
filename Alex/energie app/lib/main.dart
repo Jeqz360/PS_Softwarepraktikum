@@ -128,6 +128,29 @@ class _RuleManagementPageState extends State<RuleManagementPage> {
               onPressed: () {
                 if (ruleName != null && ruleName!.isNotEmpty && selectedConditions.isNotEmpty && selectedActions.isNotEmpty) {
                   //column: devices mit action --> drüberiterieren, entity id ist geräte, an/aus/numeric; methodenaufruf client.addRule(id eine für state und eine für numeric)  neue map machen: key heißt "condition" (das ist aggrgate condition), nächster key ist "device", da kommt id von gerät rein das gewählt wurde, key "action" da komt numerischer wert oder an/aua (state) map zu machen; regel name auch noch in die map; // für proto --> im honua_flutter im resources protodatei in unsere resources geben, befehl dafür ist im makefile
+
+                  for (var action in selectedActions) {
+
+                    //todo condition zusammenfassen TempInst?
+
+                    //client.sendRule(TempInst... CONST,
+                    Map<String, dynamic> regelMap = {
+                      'ruleName': ruleName,
+                      'Conditions': selectedConditions.map((condition) => {
+                        'type': condition['type'],
+                        'operator': condition['operator'],
+                        'value': condition['value'],
+                      }).toList(),
+                      'entity': action.isNotEmpty ? action['device'] : null, // ID des Geräts
+                      'action': action.isNotEmpty ? action['action'] : null, // Flag oder Aktion
+                      if (action['value'].isNotEmpty)
+                        'value': action['value']
+                    };
+
+                    // Aufruf der Methode zur Konsolenausgabe
+                    print(regelMap);
+
+                  }
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('Rule created: $ruleName - Conditions: ${_conditionsToString()}, Actions: ${_actionsToString()}'),
@@ -351,5 +374,8 @@ class _RuleManagementPageState extends State<RuleManagementPage> {
 
   String _actionsToString() {
     return selectedActions.map((action) => '${action['device']} ${action['action']} ${action['value']}').join(', ');
+  }
+  void printRegelMap(Map<String, dynamic> regelMap) {
+    print('RegelMap: $regelMap');
   }
 }
