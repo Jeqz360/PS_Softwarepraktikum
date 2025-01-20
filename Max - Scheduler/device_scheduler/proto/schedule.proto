@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+message Aggregate {
+    enum Type {
+        AND = 0;
+        OR = 1;
+    }
+    Type type = 1; // Referenz auf das Enum
+    repeated Condition conditions = 2;
+}
+
+message Cron {
+    string cron = 1;
+}
+
+message Time {
+    string start = 1;
+    string end = 2;
+}
+
+message Condition {
+    oneof SchedType{
+        Aggregate type = 1;
+        Cron day = 2;
+        Time time = 3;
+    }
+}
+
+message Confirmation {
+    string message = 1;
+}
+
+service SendCondition {
+    rpc SendCondition (Condition) returns (Confirmation);
+}
